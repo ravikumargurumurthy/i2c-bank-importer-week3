@@ -13,7 +13,7 @@ We use a strict whitelist + escaping to prevent SQL injection.
 import re
 from typing import Optional
 
-from schemas import BankPaymentLine, OpenInvoice
+from schemas import BankPaymentLine, OpenInvoice, Customer
 from sql_client import query_sql, query_one
 
 
@@ -185,3 +185,69 @@ def search_customers_by_name(name_fragment: str, limit: int = 20) -> list[OpenIn
     """
     rows = query_sql(query)
     return [OpenInvoice.model_validate(r) for r in rows]
+
+
+# ============================================================
+# Customer master queries
+# ============================================================
+
+_CUSTOMER_COLUMNS = """
+    customer_number, customer_name, vin, entity_code,
+    bill_to_name, bill_to_address, bill_to_phone, bill_to_contact,
+    ship_to_name, ship_to_address, ship_to_phone, ship_to_contact,
+    tax_id_1, tax_id_2, tax_id_3, payment_terms,
+    created_date, updated_date, created_by
+"""
+
+
+def get_customer_by_vin(vin: str) -> Optional[Customer]:
+    """
+    Look up a customer by their virtual account identification number.
+
+    Returns Customer if VIN matches; None if no match (which happens for
+    ~5% of bank VINs in our dev data — real-world data quality).
+    """
+    _validate_identifier(vin, "vin")
+    query = f"""
+        SELECT {_CUSTOMER_COLUMNS}
+        FROM cashapp.t_customer_master
+        WHERE vin = '{vin}'
+        LIMIT 1
+    """
+    row = query_one(query)
+    return Customer.model_validate(row) if row else None
+
+
+def get_customer_by_number(customer_number: str) -> Optional[Customer]:
+    """Look up a customer by their primary customer number."""
+    _validate_identifier(customer_number, "customer_number")
+    query = f"""
+        SELECT {_CUSTOMER_COLUMNS}
+        FROM cashapp.t_customer_master
+        WHERE customer_number = '{customer_number}'
+        LIMIT 1
+    """
+    row = query_one(query)
+    return Customer.model_validate(row) if row else None
+
+
+def search_customers_by_name_master(name_fragment: str, limit: int = 20) -> list[Customer]:
+    """
+    Search the customer master by name (vs search_customers_by_name which
+    searches via the invoice table). Use this when you don't have a VIN
+    and need to fuzzy-match against the customer base.
+    """
+    safe = _escape_string_literal(name_fragment.upper())
+    if len(name_fragment) < 3:
+        raise ValueError("name_fragment must be at least 3 characters")
+    if limit < 1 or limit > 200:
+        raise ValueError("limit must be between 1 and 200")
+    query = f"""
+        SELECT {_CUSTOMER_COLUMNS}
+        FROM cashapp.t_customer_master
+        WHERE UPPER(customer_name) LIKE '%{safe}%'
+        ORDER BY customer_name
+        LIMIT {limit}
+    """
+    rows = query_sql(query)
+    return [Customer.model_validate(r) for r in rows]

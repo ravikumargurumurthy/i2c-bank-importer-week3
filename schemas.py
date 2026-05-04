@@ -173,3 +173,70 @@ class OpenInvoice(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class Customer(BaseModel):
+    """
+    One row from cashapp.t_customer_master.
+
+    The most important field for matching is `vin` (Virtual account
+    Identification Number, format: ZLAD + 14 alphanumeric chars).
+    When a bank narrative contains a VIN, customer identification is
+    essentially deterministic — look it up here.
+
+    The other identification path is `customer_name`, used for fuzzy
+    matching when no VIN is present in the narrative.
+    """
+
+    customer_number: str
+    customer_name: Optional[str] = None
+    vin: Optional[str] = None
+    entity_code: Optional[str] = None
+
+    # Address / contact
+    bill_to_name: Optional[str] = None
+    bill_to_address: Optional[str] = None
+    bill_to_phone: Optional[str] = None
+    bill_to_contact: Optional[str] = None
+    ship_to_name: Optional[str] = None
+    ship_to_address: Optional[str] = None
+    ship_to_phone: Optional[str] = None
+    ship_to_contact: Optional[str] = None
+
+    # Tax IDs
+    tax_id_1: Optional[str] = None
+    tax_id_2: Optional[str] = None
+    tax_id_3: Optional[str] = None
+
+    payment_terms: Optional[str] = None
+
+    # Audit
+    created_date: Optional[datetime] = None
+    updated_date: Optional[datetime] = None
+    created_by: Optional[str] = None
+
+    @field_validator(
+        "customer_name", "vin", "entity_code", "bill_to_name", "bill_to_address",
+        "bill_to_phone", "bill_to_contact", "ship_to_name", "ship_to_address",
+        "ship_to_phone", "ship_to_contact", "tax_id_1", "tax_id_2", "tax_id_3",
+        "payment_terms", "created_by",
+        mode="before",
+    )
+    @classmethod
+    def _empty_str_to_none(cls, v):
+        return _empty_to_none(v)
+
+    class Config:
+        from_attributes = True
+
+class CustomerCandidate(BaseModel):
+    """One candidate customer when ambiguity exists.
+
+    Used in PaymentExtraction.candidate_customers when name matching produces
+    multiple plausible customers. The matching agent (Project 2) disambiguates
+    by checking which candidate has open AR consistent with the payment.
+    """
+    customer_number: str
+    customer_name: str
+    match_score: float
+    entity_code: Optional[str] = None
