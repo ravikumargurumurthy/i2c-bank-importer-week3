@@ -250,21 +250,32 @@ CASE 2: VIN extracted BUT lookup_customer_by_vin returned matched=false
 - extraction_notes: include the VIN that didn't match; note that this is a \
 known data quality scenario (~5% of bank VINs don't match master)
 
-CASE 3: No VIN in narrative AND narrative parsed cleanly (other signals present)
+CASE 3: No VIN in narrative AND narrative contains payment signals
+- Required signals: at least ONE of {payment_mode (NEFT/RTGS/IMPS/UPI), bank_utr, slash-delimited structure suggesting a real payment}
 - match_method: "awaiting_remittance"
 - payer_customer_number: null
 - payer_customer_name: null
 - confidence: 0.30-0.49
-- extraction_notes: include the parsed signals (UTR, payment_mode, payer_name \
-from narrative if present); note that this is the NORMAL flow for ~52% of \
-payments and identification proceeds via downstream matching
+- extraction_notes: include the parsed signals; note that this is the NORMAL flow
 
-CASE 4: Narrative could not be parsed (empty, malformed, or no signals extractable)
+CASE 4: Narrative is unparseable OR contains no payment signals
+Use this when ANY of:
+- Narrative is empty/missing
+- Narrative is malformed (random characters, no structure)
+- Narrative is well-formed text but contains NO payment signals — no payment_mode (NEFT/RTGS/IMPS/UPI), no UTR pattern, no VIN, no recognizable structure suggesting a customer payment
+- Narrative describes a bank-internal entry rather than a customer payment. Examples:
+    * "Rev.of DD Chrgs" (bank fee reversal)
+    * "MONTHLY MAINTENANCE FEE" (bank fee)
+    * "FX SETTLEMENT" (currency conversion)
+    * "OPENING BALANCE" (statement opener)
+    * Anything with "REVERSAL", "ADJUSTMENT", "FEE", "CHARGE" without a payer reference
+
+For CASE 4:
 - match_method: "unparseable"
 - payer_customer_number: null
 - payer_customer_name: null
 - confidence: 0.0-0.29
-- extraction_notes: explain what made the narrative unparseable
+- extraction_notes: explain why narrative was treated as unparseable
 
 ABSOLUTE RULES:
 - DO NOT set match_method to "vin_exact" unless lookup_customer_by_vin returned matched=true.

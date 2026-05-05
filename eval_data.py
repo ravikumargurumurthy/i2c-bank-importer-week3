@@ -60,4 +60,20 @@ EVAL_SET = [
             "payment_mode_is_set": True,
         },
     },
+    {
+    "id": "ev_B005_unparseable_bank_fee_reversal",
+    "description": (
+        "Bank fee reversal ('Rev.of DD Chrgs'), not a customer payment. "
+        "No NEFT format, no UTR, no VIN, no payer name. Agent should "
+        "recognize this is unparseable and route to exception."
+    ),
+    "bank_txn_id": "1d8126d8-9daa-42ff-adc3-6837cffe5986",
+    "expected": {
+        "match_method": "unparseable",
+        "min_confidence": 0.0,
+        "max_confidence": 0.30,
+        "routing_decision": "exception",
+        "payer_customer_number_is_null": True,
+    },
+},
 ]

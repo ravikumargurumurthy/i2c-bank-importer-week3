@@ -68,3 +68,64 @@ LESS, and pass richer context to the next stage.
 - Don't have a matching agent also try to make application decisions.
   Match in one stage, decide in another with full audit context.
 - Don't have a chat agent also try to fetch real-time data. Use
+
+
+## Day 1 — Real-world data quality findings from the bank table
+
+While searching for an "unparseable narrative" eval case, found:
+
+1. ~5 rows with `narrative = "Rev.of DD Chrgs"` and varying amounts.
+   Translation: "Reversal of Demand Draft Charges" — bank fee refunds, not
+   customer payments. Should be filtered upstream by the DE pipeline. The
+   agent's correct disposition: route to exception.
+
+2. ~5 rows with both `narrative = ""` AND `amount = NULL`. These are
+   structurally invalid payments — no transaction info at all. Cannot be
+   processed by any cash app system. Likely DE pipeline garbage rows that
+   loaded by mistake.
+
+These findings represent operational reality. In a production deployment,
+the agent contract would specify upstream filters. In our learning project,
+we handle them defensively (fee reversals → exception; null-amount rows
+crash at schema validation, which is appropriate — they shouldn't be
+processed).
+
+### Lesson
+Real banking tables contain non-payment rows: fee reversals, charge
+adjustments, currency conversions, opening balances, system entries. A
+production cash app system needs an explicit filter for "is this a customer
+payment?" before invoking the matching pipeline. This is a Project 1
+boundary concern, not Project 2 matching logic.
+
+
+## Day 1 — The "well-formed but signal-less" failure mode
+
+Initial system prompt had two narrative dispositions:
+- Parsed cleanly → awaiting_remittance
+- Could not parse → unparseable (exception)
+
+Real bank data revealed a third category:
+- Parsed without errors, but contains NO payment signals.
+
+Examples: "Rev.of DD Chrgs" (bank fee reversal), "MONTHLY MAINTENANCE FEE",
+"FX SETTLEMENT". These are well-formed English but describe bank-internal
+entries, not customer payments.
+
+The agent initially routed these to awaiting_remittance because the parser
+didn't crash. That's wrong — a remittance will never arrive for a fee
+reversal because there is no customer.
+
+### Fix
+Expanded CASE 4 in system prompt: use unparseable when narrative has no
+payment signals (no payment_mode, no UTR, no VIN, no slash structure)
+even when it's well-formed text. Listed common bank-internal patterns
+(REVERSAL, ADJUSTMENT, FEE, CHARGE).
+
+### Lesson
+"The parser didn't crash" is not the same as "this is a real payment."
+Validation needs both syntactic parsing AND semantic content checks.
+
+In production, this distinction would also live upstream: the DE pipeline
+should filter bank-internal entries before they reach the agent. Defense
+in depth — the agent handles them gracefully even if the filter misses
+some.
