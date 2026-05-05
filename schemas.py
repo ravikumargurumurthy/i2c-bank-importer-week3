@@ -12,8 +12,7 @@ Handles three data quirks observed in the dev database:
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _empty_to_none(value):
@@ -88,8 +87,7 @@ class BankPaymentLine(BaseModel):
         # str() conversion handles floats safely (avoids float-binary precision)
         return Decimal(str(v))
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OpenInvoice(BaseModel):
@@ -171,8 +169,7 @@ class OpenInvoice(BaseModel):
             raise ValueError("invoice_amount is required")
         return Decimal(str(v))
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Customer(BaseModel):
@@ -226,8 +223,7 @@ class Customer(BaseModel):
     def _empty_str_to_none(cls, v):
         return _empty_to_none(v)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CustomerCandidate(BaseModel):
     """One candidate customer when ambiguity exists.
