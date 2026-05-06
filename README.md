@@ -105,3 +105,10 @@ against this real data layer, adds Streamlit HITL UI, multi-format input.
 Project 2 (Weeks 7-9) is the matching agent — implements the SME's cascade
 logic: VIN → remittance → invoice-to-customer lookup. This is where the hard
 problem lives.
+
+## Eval results
+test_extraction[ev_B001_van_clean_match_hapag] PASSED
+test_extraction[ev_B002_van_clean_match_hapag_alt] PASSED
+test_extraction[ev_B003_no_van_awaiting_remittance] PASSED
+test_extraction[ev_B004_no_van_awaiting_remittance_alt] PASSED
+test_extraction[ev_B005_unparseable_bank_fee_reversal] PASSED
