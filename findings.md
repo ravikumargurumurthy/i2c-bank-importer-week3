@@ -231,3 +231,25 @@ These observations validate the SME-informed deferred matching design.
 Production cash app systems handle dirty customer masters via the matching
 agent's amount-and-AR consistency checks, not by assuming clean masters at
 extraction time.
+
+
+## Day 2 — Multi-run stability measurement
+
+Ran each eval case 5 times to measure stability under LLM non-determinism.
+Threshold: 4/5 must pass.
+
+Results:
+- ev_B001 (HAPAG VIN auto_apply): X/5 passed
+- ev_B002 (HAPAG alt VIN): X/5 passed
+- ev_B003 (COSCO awaiting_remittance): X/5 passed
+- ev_B004 (COSCO alt): X/5 passed
+- ev_B005 (fee reversal unparseable): X/5 passed
+
+[Replace X with actual numbers from your run.]
+
+[Note any flaky cases here — confidence values that drift between bands,
+match_method that changes between runs, etc.]
+
+Lesson: production agent claims need stability evidence, not single-run
+results. Single-run "5/5 passing" can hide significant variance. Multi-run
+gives confidence intervals on the agent's actual reliability.
